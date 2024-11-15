@@ -1107,18 +1107,6 @@ unsigned AArch64RegisterInfo::getRegPressureLimit(const TargetRegisterClass *RC,
   }
 }
 
-// FORM_STRIDED_TUPLE nodes are created to improve register allocation where
-// a consecutive multi-vector tuple is constructed from the same indices of
-// multiple strided loads. This may still result in unnecessary copies between
-// the loads and the tuple. Here we try to return a hint to assign the
-// contiguous ZPRMulReg starting at the same register as the first operand of
-// the pseudo, which should be a subregister of the first strided load.
-//
-// For example, if the first strided load has been assigned $z16_z20_z24_z28
-// and the operands of the pseudo are each accessing subregister zsub2, we
-// should look through through Order to find a contiguous register which
-// begins with $z24 (i.e. $z24_z25_z26_z27).
-//
 bool AArch64RegisterInfo::getRegAllocationHints(
     Register VirtReg, ArrayRef<MCPhysReg> Order,
     SmallVectorImpl<MCPhysReg> &Hints, const MachineFunction &MF,
@@ -1130,6 +1118,68 @@ bool AArch64RegisterInfo::getRegAllocationHints(
       TargetRegisterInfo::getRegAllocationHints(VirtReg, Order, Hints, MF, VRM);
 
   unsigned RegID = MRI.getRegClass(VirtReg)->getID();
+
+  // Since the SVE calling convention preserves registers Z8-Z23, there are no
+  // ZPR2Strided or ZPR4Strided registers which do not overlap with the
+  // callee-saved registers. These will be pushed to the back of the allocation
+  // order for the ZPRStridedOrContiguous classes.
+  // However, if any of the instructions which define VirtReg are
+  // ZPRStridedOrContiguous loads used by a FORM_STRIDED_TUPLE pseudo, it will
+  // likely be better to try assigning a strided register anyway to avoid extra
+  // copy instructions.
+
+  if (RegID == AArch64::ZPR2StridedOrContiguousRegClassID ||
+      RegID == AArch64::ZPR4StridedOrContiguousRegClassID) {
+
+    if (!MF.getInfo<AArch64FunctionInfo>()->isSVECC())
+      return DefaultHints;
+
+    for (MachineInstr &MI : MRI.def_instructions(VirtReg)) {
+      if (MI.mayLoad())
+        continue;
+
+      // Look through uses of the register if the def is possibly a load
+      // instruction. If the FORM_STRIDED_TUPLE pseudo is found in the uses,
+      // set HintStrided.
+      bool HintStrided = false;
+      for (MachineInstr &Use : MRI.use_nodbg_instructions(VirtReg)) {
+        unsigned UseOp = Use.getOpcode();
+        if (UseOp == AArch64::FORM_STRIDED_TUPLE_X2_PSEUDO ||
+            UseOp == AArch64::FORM_STRIDED_TUPLE_X4_PSEUDO) {
+          HintStrided = true;
+          break;
+        }
+      }
+
+      if (!HintStrided)
+        continue;
+
+      // Push the list of 2/4 ZPRStrided registers to Hints to ensure we try to
+      // allocate these first.
+      TargetRegisterClass StridedRC =
+          RegID == AArch64::ZPR2StridedOrContiguousRegClassID
+                   ? AArch64::ZPR2StridedRegClass
+                   : AArch64::ZPR4StridedRegClass;
+
+      for (MCPhysReg Reg : StridedRC.getRawAllocationOrder(MF))
+        Hints.push_back(Reg);
+    }
+
+    return DefaultHints;
+  }
+
+  // FORM_STRIDED_TUPLE nodes are created to improve register allocation where
+  // a consecutive multi-vector tuple is constructed from the same indices of
+  // multiple strided loads. This may still result in unnecessary copies between
+  // the loads and the tuple. Here we try to return a hint to assign the
+  // contiguous ZPRMulReg starting at the same register as the first operand of
+  // the pseudo, which should be a subregister of the first strided load.
+  //
+  // For example, if the first strided load has been assigned $z16_z20_z24_z28
+  // and the operands of the pseudo are each accessing subregister zsub2, we
+  // should look through through Order to find a contiguous register which
+  // begins with $z24 (i.e. $z24_z25_z26_z27).
+
   if (RegID != AArch64::ZPR2Mul2RegClassID &&
       RegID != AArch64::ZPR4Mul4RegClassID)
     return DefaultHints;
