@@ -228,3 +228,57 @@ define i64 @test_sqdmulls_scalar(float %A){
   %prod = call i64 @llvm.aarch64.neon.sqdmulls.scalar(i32  %cvt, i32  %cvt)
   ret i64 %prod
 }
+
+define i32 @test_sqdmulh_scalar(float noundef %a) {
+; CHECK-LABEL: test_sqdmulh_scalar:
+; CHECK:       // %bb.0: // %entry
+; CHECK-NEXT:    fcvtzs s0, s0
+; CHECK-NEXT:    sqdmulh s0, s0, s0
+; CHECK-NEXT:    fmov w0, s0
+; CHECK-NEXT:    ret
+entry:
+  %cvt = tail call i32 @llvm.aarch64.neon.fcvtzs.i32.f32(float %a)
+  %res = call i32 @llvm.aarch64.neon.sqdmulh.i32(i32 %cvt, i32 %cvt)
+  ret i32 %res
+}
+
+define i32 @test_sqrdmulh_scalar(float noundef %a) {
+; CHECK-LABEL: test_sqrdmulh_scalar:
+; CHECK:       // %bb.0: // %entry
+; CHECK-NEXT:    fcvtzs s0, s0
+; CHECK-NEXT:    sqrdmulh s0, s0, s0
+; CHECK-NEXT:    fmov w0, s0
+; CHECK-NEXT:    ret
+entry:
+  %cvt = tail call i32 @llvm.aarch64.neon.fcvtzs.i32.f32(float %a)
+  %res = call i32 @llvm.aarch64.neon.sqrdmulh.i32(i32 %cvt, i32 %cvt)
+  ret i32 %res
+}
+
+define i32 @test_sqrdmlah_scalar(float noundef %a) #0 {
+; CHECK-LABEL: test_sqrdmlah_scalar:
+; CHECK:       // %bb.0: // %entry
+; CHECK-NEXT:    fcvtzs s0, s0
+; CHECK-NEXT:    sqrdmlah s0, s0, s0
+; CHECK-NEXT:    fmov w0, s0
+; CHECK-NEXT:    ret
+entry:
+  %cvt = tail call i32 @llvm.aarch64.neon.fcvtzs.i32.f32(float %a)
+  %res = call i32 @llvm.aarch64.neon.sqrdmlah.i32(i32 %cvt, i32 %cvt, i32 %cvt)
+  ret i32 %res
+}
+
+define i32 @test_sqrdmlsh_scalar(float noundef %a) #0 {
+; CHECK-LABEL: test_sqrdmlsh_scalar:
+; CHECK:       // %bb.0: // %entry
+; CHECK-NEXT:    fcvtzs s0, s0
+; CHECK-NEXT:    sqrdmlsh s0, s0, s0
+; CHECK-NEXT:    fmov w0, s0
+; CHECK-NEXT:    ret
+entry:
+  %cvt = tail call i32 @llvm.aarch64.neon.fcvtzs.i32.f32(float %a)
+  %res = call i32 @llvm.aarch64.neon.sqrdmlsh.i32(i32 %cvt, i32 %cvt, i32 %cvt)
+  ret i32 %res
+}
+
+attributes #0 = { "target-features"="+rdm" }
