@@ -116,21 +116,23 @@ define void @test_boring_case_2x2bit_mask(i64 %i, i64 %n) #0 {
 define void @test_legal_4x2bit_mask(i64 %i, i64 %n) #0 {
 ; CHECK-SVE-LABEL: test_legal_4x2bit_mask:
 ; CHECK-SVE:       // %bb.0:
-; CHECK-SVE-NEXT:    cntd x8
-; CHECK-SVE-NEXT:    adds x9, x0, x8
-; CHECK-SVE-NEXT:    csinv x9, x9, xzr, lo
-; CHECK-SVE-NEXT:    adds x10, x9, x8
-; CHECK-SVE-NEXT:    csinv x10, x10, xzr, lo
-; CHECK-SVE-NEXT:    adds x8, x10, x8
+; CHECK-SVE-NEXT:    cntd x8, all, mul #3
+; CHECK-SVE-NEXT:    adds x8, x0, x8
 ; CHECK-SVE-NEXT:    csinv x8, x8, xzr, lo
-; CHECK-SVE-NEXT:    whilelo p1.d, x0, x1
-; CHECK-SVE-NEXT:    whilelo p0.d, x10, x1
-; CHECK-SVE-NEXT:    whilelo p2.d, x8, x1
-; CHECK-SVE-NEXT:    whilelo p3.d, x9, x1
-; CHECK-SVE-NEXT:    // fake_use: $p1
-; CHECK-SVE-NEXT:    // fake_use: $p3
-; CHECK-SVE-NEXT:    // fake_use: $p0
+; CHECK-SVE-NEXT:    whilelo p0.d, x8, x1
+; CHECK-SVE-NEXT:    cntw x8
+; CHECK-SVE-NEXT:    adds x8, x0, x8
+; CHECK-SVE-NEXT:    csinv x8, x8, xzr, lo
+; CHECK-SVE-NEXT:    whilelo p1.d, x8, x1
+; CHECK-SVE-NEXT:    cntd x8
+; CHECK-SVE-NEXT:    adds x8, x0, x8
+; CHECK-SVE-NEXT:    csinv x8, x8, xzr, lo
+; CHECK-SVE-NEXT:    whilelo p2.d, x0, x1
+; CHECK-SVE-NEXT:    whilelo p3.d, x8, x1
 ; CHECK-SVE-NEXT:    // fake_use: $p2
+; CHECK-SVE-NEXT:    // fake_use: $p3
+; CHECK-SVE-NEXT:    // fake_use: $p1
+; CHECK-SVE-NEXT:    // fake_use: $p0
 ; CHECK-SVE-NEXT:    ret
 ;
 ; CHECK-SVE2p1-SME2-LABEL: test_legal_4x2bit_mask:
@@ -479,23 +481,25 @@ if.end:
 define void @test_4x4bit_mask_with_extracts_and_ptest(i64 %i, i64 %n) {
 ; CHECK-SVE-LABEL: test_4x4bit_mask_with_extracts_and_ptest:
 ; CHECK-SVE:       // %bb.0: // %entry
-; CHECK-SVE-NEXT:    cntw x10
-; CHECK-SVE-NEXT:    adds x8, x0, x10
+; CHECK-SVE-NEXT:    cntw x8
+; CHECK-SVE-NEXT:    cnth x9
+; CHECK-SVE-NEXT:    cntw x10, all, mul #3
+; CHECK-SVE-NEXT:    adds x8, x0, x8
 ; CHECK-SVE-NEXT:    csinv x8, x8, xzr, lo
-; CHECK-SVE-NEXT:    adds x9, x8, x10
+; CHECK-SVE-NEXT:    adds x9, x0, x9
 ; CHECK-SVE-NEXT:    csinv x9, x9, xzr, lo
-; CHECK-SVE-NEXT:    adds x10, x9, x10
+; CHECK-SVE-NEXT:    adds x10, x0, x10
 ; CHECK-SVE-NEXT:    csinv x10, x10, xzr, lo
 ; CHECK-SVE-NEXT:    whilelo p0.s, x0, x1
 ; CHECK-SVE-NEXT:    b.pl .LBB13_2
 ; CHECK-SVE-NEXT:  // %bb.1: // %if.then
-; CHECK-SVE-NEXT:    whilelo p1.s, x10, x1
+; CHECK-SVE-NEXT:    whilelo p1.s, x8, x1
 ; CHECK-SVE-NEXT:    whilelo p2.s, x9, x1
-; CHECK-SVE-NEXT:    whilelo p3.s, x8, x1
+; CHECK-SVE-NEXT:    whilelo p3.s, x10, x1
 ; CHECK-SVE-NEXT:    // fake_use: $p0
-; CHECK-SVE-NEXT:    // fake_use: $p3
-; CHECK-SVE-NEXT:    // fake_use: $p2
 ; CHECK-SVE-NEXT:    // fake_use: $p1
+; CHECK-SVE-NEXT:    // fake_use: $p2
+; CHECK-SVE-NEXT:    // fake_use: $p3
 ; CHECK-SVE-NEXT:  .LBB13_2: // %if.end
 ; CHECK-SVE-NEXT:    ret
 ;
@@ -537,23 +541,25 @@ if.end:
 define void @test_4x2bit_mask_with_extracts_and_reinterpret_casts(i64 %i, i64 %n) {
 ; CHECK-SVE-LABEL: test_4x2bit_mask_with_extracts_and_reinterpret_casts:
 ; CHECK-SVE:       // %bb.0: // %entry
-; CHECK-SVE-NEXT:    cntd x10
-; CHECK-SVE-NEXT:    adds x8, x0, x10
+; CHECK-SVE-NEXT:    cntd x8
+; CHECK-SVE-NEXT:    cntw x9
+; CHECK-SVE-NEXT:    cntd x10, all, mul #3
+; CHECK-SVE-NEXT:    adds x8, x0, x8
 ; CHECK-SVE-NEXT:    csinv x8, x8, xzr, lo
-; CHECK-SVE-NEXT:    adds x9, x8, x10
+; CHECK-SVE-NEXT:    adds x9, x0, x9
 ; CHECK-SVE-NEXT:    csinv x9, x9, xzr, lo
-; CHECK-SVE-NEXT:    adds x10, x9, x10
+; CHECK-SVE-NEXT:    adds x10, x0, x10
 ; CHECK-SVE-NEXT:    csinv x10, x10, xzr, lo
 ; CHECK-SVE-NEXT:    whilelo p0.d, x0, x1
 ; CHECK-SVE-NEXT:    b.pl .LBB14_2
 ; CHECK-SVE-NEXT:  // %bb.1: // %if.then
-; CHECK-SVE-NEXT:    whilelo p1.d, x10, x1
+; CHECK-SVE-NEXT:    whilelo p1.d, x8, x1
 ; CHECK-SVE-NEXT:    whilelo p2.d, x9, x1
-; CHECK-SVE-NEXT:    whilelo p3.d, x8, x1
+; CHECK-SVE-NEXT:    whilelo p3.d, x10, x1
 ; CHECK-SVE-NEXT:    // fake_use: $p0
-; CHECK-SVE-NEXT:    // fake_use: $p3
-; CHECK-SVE-NEXT:    // fake_use: $p2
 ; CHECK-SVE-NEXT:    // fake_use: $p1
+; CHECK-SVE-NEXT:    // fake_use: $p2
+; CHECK-SVE-NEXT:    // fake_use: $p3
 ; CHECK-SVE-NEXT:  .LBB14_2: // %if.end
 ; CHECK-SVE-NEXT:    ret
 ;

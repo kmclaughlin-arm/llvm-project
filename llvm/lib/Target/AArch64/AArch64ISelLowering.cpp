@@ -20269,21 +20269,23 @@ performActiveLaneMaskCombine(SDNode *N, TargetLowering::DAGCombinerInfo &DCI,
   SDLoc DL(N);
   SDValue Idx = N->getOperand(0);
   SDValue TC = N->getOperand(1);
+  EVT IdxVT = Idx.getValueType();
   EVT ExtVT = Extracts[0]->getValueType(0);
 
-  if (!N->getValueType(0).isScalableVector() ||
+  if (N->getValueType(0).isFixedLengthVector() ||
       !(ST->hasSVE2p1() || ST->hasSME2())) {
 
     // If the whilelo_x2 instruction is not available or the types are
     // fixed-width, prefer to use multiple smaller whilelo instructions.
     SmallVector<SDValue> Masks;
-    auto EC = DAG.getElementCount(DL, Idx.getValueType(), ExtMinEC);
+    SDValue StartVal = Idx;
     for (unsigned I = 0; I < NumExts; ++I) {
       if (I > 0)
-        Idx = DAG.getNode(ISD::UADDSAT, DL, Idx.getValueType(), Idx, EC);
+        StartVal = DAG.getNode(ISD::UADDSAT, DL, IdxVT, Idx,
+                               DAG.getElementCount(DL, IdxVT, ExtMinEC * I));
 
       auto ALMForPart =
-          DAG.getNode(ISD::GET_ACTIVE_LANE_MASK, DL, ExtVT, Idx, TC);
+          DAG.getNode(ISD::GET_ACTIVE_LANE_MASK, DL, ExtVT, StartVal, TC);
       Masks.push_back(ALMForPart);
       DCI.CombineTo(Extracts[I], ALMForPart);
     }
@@ -20294,7 +20296,7 @@ performActiveLaneMaskCombine(SDNode *N, TargetLowering::DAGCombinerInfo &DCI,
   SDValue ID =
       DAG.getTargetConstant(Intrinsic::aarch64_sve_whilelo_x2, DL, MVT::i64);
 
-  if (Idx.getValueType() != MVT::i64) {
+  if (IdxVT != MVT::i64) {
     Idx = DAG.getNode(ISD::ZERO_EXTEND, DL, MVT::i64, Idx);
     TC = DAG.getNode(ISD::ZERO_EXTEND, DL, MVT::i64, TC);
   }
