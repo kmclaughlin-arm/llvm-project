@@ -26,6 +26,7 @@
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/CodeGen/CFIInstBuilder.h"
+#include "llvm/CodeGen/CodeGenCommonISel.h"
 #include "llvm/CodeGen/LivePhysRegs.h"
 #include "llvm/CodeGen/LiveRegUnits.h"
 #include "llvm/CodeGen/MachineBasicBlock.h"
@@ -2947,17 +2948,6 @@ bool AArch64InstrInfo::isStridedAccess(const MachineInstr &MI) {
   return llvm::any_of(MI.memoperands(), [](MachineMemOperand *MMO) {
     return MMO->getFlags() & MOStridedAccess;
   });
-}
-
-AArch64AtomicStoreHint
-AArch64InstrInfo::decodeAtomicHintFlags(MachineMemOperand::Flags MMOFlags) {
-  unsigned AtomicHint = 0;
-  if (MMOFlags & MOAtomicHintBit0)
-    AtomicHint += 0b1;
-  if (MMOFlags & MOAtomicHintBit1)
-    AtomicHint += 0b10;
-
-  return static_cast<AArch64AtomicStoreHint>(AtomicHint);
 }
 
 bool AArch64InstrInfo::hasUnscaledLdStOffset(unsigned Opc) {

@@ -1826,7 +1826,7 @@ int test_rndrrs(uint64_t *__addr) {
 
 // AArch64-LABEL: @test_atomic_store_hint_char(
 // AArch64-NEXT:  entry:
-// AArch64-NEXT:    store atomic i8 [[DATA:%.*]], ptr [[PTR:%.*]] monotonic, align 1, !aarch64.atomic.hint [[META3:![0-9]+]]
+// AArch64-NEXT:    store atomic i8 [[DATA:%.*]], ptr [[PTR:%.*]] monotonic, align 1, !mem.cache_hint [[HINT1:![0-9]+]]
 // AArch64-NEXT:    ret void
 //
 void test_atomic_store_hint_char(char *ptr, char data) {
@@ -1835,7 +1835,7 @@ void test_atomic_store_hint_char(char *ptr, char data) {
 
 // AArch64-LABEL: @test_atomic_store_hint_uchar(
 // AArch64-NEXT:  entry:
-// AArch64-NEXT:    store atomic i8 [[DATA:%.*]], ptr [[PTR:%.*]] monotonic, align 1, !aarch64.atomic.hint [[META3]]
+// AArch64-NEXT:    store atomic i8 [[DATA:%.*]], ptr [[PTR:%.*]] monotonic, align 1, !mem.cache_hint [[HINT1]]
 // AArch64-NEXT:    ret void
 //
 void test_atomic_store_hint_uchar(unsigned char *ptr, unsigned char data) {
@@ -1844,16 +1844,25 @@ void test_atomic_store_hint_uchar(unsigned char *ptr, unsigned char data) {
 
 // AArch64-LABEL: @test_atomic_store_hint_schar(
 // AArch64-NEXT:  entry:
-// AArch64-NEXT:    store atomic i8 [[DATA:%.*]], ptr [[PTR:%.*]] monotonic, align 1, !aarch64.atomic.hint [[META3]]
+// AArch64-NEXT:    store atomic i8 [[DATA:%.*]], ptr [[PTR:%.*]] monotonic, align 1, !mem.cache_hint [[HINT1]]
 // AArch64-NEXT:    ret void
 //
 void test_atomic_store_hint_schar(signed char *ptr, signed char data) {
   __arm_atomic_store_with_hint(ptr, data, __ATOMIC_RELAXED, 0);
 }
 
+// AArch64-LABEL: @test_atomic_store_hint_mfloat(
+// AArch64-NEXT:  entry:
+// AArch64-NEXT:    store atomic <1 x i8> [[DATA:%.*]], ptr [[PTR:%.*]] monotonic, align 1, !mem.cache_hint [[HINT1]]
+// AArch64-NEXT:    ret void
+//
+void test_atomic_store_hint_mfloat(__mfp8 *ptr, __mfp8 data) {
+  __arm_atomic_store_with_hint(ptr, data, __ATOMIC_RELAXED, 0);
+}
+
 // AArch64-LABEL: @test_atomic_store_hint_bfloat(
 // AArch64-NEXT:  entry:
-// AArch64-NEXT:    store atomic bfloat [[DATA:%.*]], ptr [[PTR:%.*]] release, align 2, !aarch64.atomic.hint [[META4:![0-9]+]]
+// AArch64-NEXT:    store atomic bfloat [[DATA:%.*]], ptr [[PTR:%.*]] release, align 2, !mem.cache_hint [[HINT3:![0-9]+]]
 // AArch64-NEXT:    ret void
 //
 void test_atomic_store_hint_bfloat(__bf16 *ptr, __bf16 data) {
@@ -1862,7 +1871,7 @@ void test_atomic_store_hint_bfloat(__bf16 *ptr, __bf16 data) {
 
 // AArch64-LABEL: @test_atomic_store_hint_half(
 // AArch64-NEXT:  entry:
-// AArch64-NEXT:    store atomic half [[DATA:%.*]], ptr [[PTR:%.*]] release, align 2, !aarch64.atomic.hint [[META4:![0-9]+]]
+// AArch64-NEXT:    store atomic half [[DATA:%.*]], ptr [[PTR:%.*]] release, align 2, !mem.cache_hint [[HINT3]]
 // AArch64-NEXT:    ret void
 //
 void test_atomic_store_hint_half(__fp16 *ptr, __fp16 data) {
@@ -1871,7 +1880,7 @@ void test_atomic_store_hint_half(__fp16 *ptr, __fp16 data) {
 
 // AArch64-LABEL: @test_atomic_store_hint_short(
 // AArch64-NEXT:  entry:
-// AArch64-NEXT:    store atomic i16 [[DATA:%.*]], ptr [[PTR:%.*]] release, align 2, !aarch64.atomic.hint [[META3]]
+// AArch64-NEXT:    store atomic i16 [[DATA:%.*]], ptr [[PTR:%.*]] release, align 2, !mem.cache_hint [[HINT1]]
 // AArch64-NEXT:    ret void
 //
 void test_atomic_store_hint_short(short *ptr, short data) {
@@ -1880,7 +1889,7 @@ void test_atomic_store_hint_short(short *ptr, short data) {
 
 // AArch64-LABEL: @test_atomic_store_hint_ushort(
 // AArch64-NEXT:  entry:
-// AArch64-NEXT:    store atomic i16 [[DATA:%.*]], ptr [[PTR:%.*]] release, align 2, !aarch64.atomic.hint [[META3]]
+// AArch64-NEXT:    store atomic i16 [[DATA:%.*]], ptr [[PTR:%.*]] release, align 2, !mem.cache_hint [[HINT1]]
 // AArch64-NEXT:    ret void
 //
 void test_atomic_store_hint_ushort(unsigned short *ptr, unsigned short data) {
@@ -1889,7 +1898,7 @@ void test_atomic_store_hint_ushort(unsigned short *ptr, unsigned short data) {
 
 // AArch64-LABEL: @test_atomic_store_hint_int(
 // AArch64-NEXT:  entry:
-// AArch64-NEXT:    store atomic i32 [[DATA:%.*]], ptr [[PTR:%.*]] seq_cst, align 4, !aarch64.atomic.hint [[META3]]
+// AArch64-NEXT:    store atomic i32 [[DATA:%.*]], ptr [[PTR:%.*]] seq_cst, align 4, !mem.cache_hint [[HINT1]]
 // AArch64-NEXT:    ret void
 //
 void test_atomic_store_hint_int(int *ptr, int data) {
@@ -1898,7 +1907,7 @@ void test_atomic_store_hint_int(int *ptr, int data) {
 
 // AArch64-LABEL: @test_atomic_store_hint_unsigned(
 // AArch64-NEXT:  entry:
-// AArch64-NEXT:    store atomic i32 [[DATA:%.*]], ptr [[PTR:%.*]] seq_cst, align 4, !aarch64.atomic.hint [[META3]]
+// AArch64-NEXT:    store atomic i32 [[DATA:%.*]], ptr [[PTR:%.*]] seq_cst, align 4, !mem.cache_hint [[HINT1]]
 // AArch64-NEXT:    ret void
 //
 void test_atomic_store_hint_unsigned(unsigned *ptr, unsigned data) {
@@ -1907,7 +1916,7 @@ void test_atomic_store_hint_unsigned(unsigned *ptr, unsigned data) {
 
 // AArch64-LABEL: @test_atomic_store_hint_u32(
 // AArch64-NEXT:  entry:
-// AArch64-NEXT:    store atomic i32 [[DATA:%.*]], ptr [[PTR:%.*]] seq_cst, align 4, !aarch64.atomic.hint [[META3]]
+// AArch64-NEXT:    store atomic i32 [[DATA:%.*]], ptr [[PTR:%.*]] seq_cst, align 4, !mem.cache_hint [[HINT1]]
 // AArch64-NEXT:    ret void
 //
 void test_atomic_store_hint_u32(uint32_t *ptr, uint32_t data) {
@@ -1916,7 +1925,7 @@ void test_atomic_store_hint_u32(uint32_t *ptr, uint32_t data) {
 
 // AArch64-LABEL: @test_atomic_store_hint_s32(
 // AArch64-NEXT:  entry:
-// AArch64-NEXT:    store atomic i32 [[DATA:%.*]], ptr [[PTR:%.*]] seq_cst, align 4, !aarch64.atomic.hint [[META3]]
+// AArch64-NEXT:    store atomic i32 [[DATA:%.*]], ptr [[PTR:%.*]] seq_cst, align 4, !mem.cache_hint [[HINT1]]
 // AArch64-NEXT:    ret void
 //
 void test_atomic_store_hint_s32(int32_t *ptr, int32_t data) {
@@ -1925,7 +1934,7 @@ void test_atomic_store_hint_s32(int32_t *ptr, int32_t data) {
 
 // AArch64-LABEL: @test_atomic_store_hint_float(
 // AArch64-NEXT:  entry:
-// AArch64-NEXT:    store atomic float [[DATA:%.*]], ptr [[PTR:%.*]] seq_cst, align 4, !aarch64.atomic.hint [[META3]]
+// AArch64-NEXT:    store atomic float [[DATA:%.*]], ptr [[PTR:%.*]] seq_cst, align 4, !mem.cache_hint [[HINT1]]
 // AArch64-NEXT:    ret void
 //
 void test_atomic_store_hint_float(float *ptr, float data) {
@@ -1934,7 +1943,7 @@ void test_atomic_store_hint_float(float *ptr, float data) {
 
 // AArch64-LABEL: @test_atomic_store_hint_s64(
 // AArch64-NEXT:  entry:
-// AArch64-NEXT:    store atomic i64 [[DATA:%.*]], ptr [[PTR:%.*]] monotonic, align 8, !aarch64.atomic.hint [[META4]]
+// AArch64-NEXT:    store atomic i64 [[DATA:%.*]], ptr [[PTR:%.*]] monotonic, align 8, !mem.cache_hint [[HINT3]]
 // AArch64-NEXT:    ret void
 //
 void test_atomic_store_hint_s64(int64_t *ptr, int64_t data) {
@@ -1943,7 +1952,7 @@ void test_atomic_store_hint_s64(int64_t *ptr, int64_t data) {
 
 // AArch64-LABEL: @test_atomic_store_hint_long(
 // AArch64-NEXT:  entry:
-// AArch64-NEXT:    store atomic i64 [[DATA:%.*]], ptr [[PTR:%.*]] release, align 8, !aarch64.atomic.hint [[META3]]
+// AArch64-NEXT:    store atomic i64 [[DATA:%.*]], ptr [[PTR:%.*]] release, align 8, !mem.cache_hint [[HINT1]]
 // AArch64-NEXT:    ret void
 //
 void test_atomic_store_hint_long(long *ptr, long data) {
@@ -1952,7 +1961,7 @@ void test_atomic_store_hint_long(long *ptr, long data) {
 
 // AArch64-LABEL: @test_atomic_store_hint_ulong(
 // AArch64-NEXT:  entry:
-// AArch64-NEXT:    store atomic i64 [[DATA:%.*]], ptr [[PTR:%.*]] release, align 8, !aarch64.atomic.hint [[META3]]
+// AArch64-NEXT:    store atomic i64 [[DATA:%.*]], ptr [[PTR:%.*]] release, align 8, !mem.cache_hint [[HINT1]]
 // AArch64-NEXT:    ret void
 //
 void test_atomic_store_hint_ulong(unsigned long *ptr, unsigned long data) {
@@ -1961,7 +1970,7 @@ void test_atomic_store_hint_ulong(unsigned long *ptr, unsigned long data) {
 
 // AArch64-LABEL: @test_atomic_store_hint_long_long_int(
 // AArch64-NEXT:  entry:
-// AArch64-NEXT:    store atomic i64 [[DATA:%.*]], ptr [[PTR:%.*]] release, align 8, !aarch64.atomic.hint [[META3]]
+// AArch64-NEXT:    store atomic i64 [[DATA:%.*]], ptr [[PTR:%.*]] release, align 8, !mem.cache_hint [[HINT1]]
 // AArch64-NEXT:    ret void
 //
 void test_atomic_store_hint_long_long_int(long long int *ptr, long long int data) {
@@ -1970,7 +1979,7 @@ void test_atomic_store_hint_long_long_int(long long int *ptr, long long int data
 
 // AArch64-LABEL: @test_atomic_store_hint_long_long_uint(
 // AArch64-NEXT:  entry:
-// AArch64-NEXT:    store atomic i64 [[DATA:%.*]], ptr [[PTR:%.*]] release, align 8, !aarch64.atomic.hint [[META3]]
+// AArch64-NEXT:    store atomic i64 [[DATA:%.*]], ptr [[PTR:%.*]] release, align 8, !mem.cache_hint [[HINT1]]
 // AArch64-NEXT:    ret void
 //
 void test_atomic_store_hint_long_long_uint(unsigned long long int *ptr, unsigned long long int data) {
@@ -1979,13 +1988,16 @@ void test_atomic_store_hint_long_long_uint(unsigned long long int *ptr, unsigned
 
 // AArch64-LABEL: @test_atomic_store_hint_double(
 // AArch64-NEXT:  entry:
-// AArch64-NEXT:    store atomic double [[DATA:%.*]], ptr [[PTR:%.*]] monotonic, align 8, !aarch64.atomic.hint [[META4]]
+// AArch64-NEXT:    store atomic double [[DATA:%.*]], ptr [[PTR:%.*]] monotonic, align 8, !mem.cache_hint [[HINT3]]
 // AArch64-NEXT:    ret void
 //
 void test_atomic_store_hint_double(double *ptr, double data) {
   __arm_atomic_store_with_hint(ptr, data, __ATOMIC_RELAXED, 1);
 }
 
-// AArch64: [[META3]] = !{i32 0}
-// AArch64-NEXT: [[META4]] = !{i32 1}
+// AArch64: [[HINT1]] = !{i32 1, [[HINT2:![0-9]+]]}
+// AArch64-NEXT: [[HINT2]] = !{!"aarch64.atomic_hint", i32 0}
+
+// AArch64-NEXT: [[HINT3]] = !{i32 1, [[HINT4:![0-9]+]]}
+// AArch64-NEXT: [[HINT4]] = !{!"aarch64.atomic_hint", i32 1}
 #endif

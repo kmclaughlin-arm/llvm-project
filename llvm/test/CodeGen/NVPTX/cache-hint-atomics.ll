@@ -14,10 +14,10 @@ define i32 @atomic_load_l1_hint(ptr addrspace(1) %p) {
   ret i32 %v
 }
 
-; TODO: This should eventually lower to st.release.sys.global.L2::cache_hint.b32.
 define void @atomic_store_l2_cache_policy(ptr addrspace(1) %p, i32 %v) {
 ; CHECK-LABEL: atomic_store_l2_cache_policy(
-; CHECK:    st.release.sys.global.b32 [%rd1], %r1;
+; CHECK:    mov.b64 %rd2, 12345;
+; CHECK:    st.release.sys.global.L2::cache_hint.b32 [%rd1], %r1, %rd2;
   store atomic i32 %v, ptr addrspace(1) %p release, align 4, !mem.cache_hint !2
   ret void
 }
