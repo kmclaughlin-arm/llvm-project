@@ -3276,7 +3276,7 @@ void AArch64AsmPrinter::emitAtomicHintPseudoExpansion(const MachineInstr *MI) {
   }
 
   EmitToStreamer(
-      MCInstBuilder(AArch64::STSHH).addImm(MI->getOperand(3).getImm()));
+      MCInstBuilder(AArch64::HINT).addImm(MI->getOperand(3).getImm()));
 
   MCInst Store;
   Store.setOpcode(StOpc);
@@ -3325,7 +3325,7 @@ void AArch64AsmPrinter::emitAtomicHintPseudoExpansionRO(
   }
 
   EmitToStreamer(
-      MCInstBuilder(AArch64::STSHH).addImm(MI->getOperand(6).getImm()));
+      MCInstBuilder(AArch64::HINT).addImm(MI->getOperand(6).getImm()));
 
   MCInst Store;
   Store.setOpcode(StOpc);
@@ -3375,7 +3375,7 @@ void AArch64AsmPrinter::emitAtomicHintPseudoExpansionImm(
   }
 
   EmitToStreamer(
-      MCInstBuilder(AArch64::STSHH).addImm(MI->getOperand(4).getImm()));
+      MCInstBuilder(AArch64::HINT).addImm(MI->getOperand(4).getImm()));
 
   MCInst Store;
   Store.setOpcode(StOpc);
