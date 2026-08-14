@@ -5771,6 +5771,8 @@ void AArch64InstrInfo::copyPhysRegTuple(MachineBasicBlock &MBB,
     const MachineInstrBuilder MIB = BuildMI(MBB, I, DL, get(Opcode));
     AddSubReg(MIB, DestReg, Indices[SubReg], RegState::Define, TRI);
     AddSubReg(MIB, SrcReg, Indices[SubReg], {}, TRI);
+    if (Opcode == AArch64::ORR_PPzPP)
+      AddSubReg(MIB, SrcReg, Indices[SubReg], {}, TRI);
     AddSubReg(MIB, SrcReg, Indices[SubReg], getKillRegState(KillSrc), TRI);
   }
 }
@@ -5988,6 +5990,16 @@ void AArch64InstrInfo::copyPhysReg(MachineBasicBlock &MBB,
       if (DestIsPNR)
         NewMI.addDef(DestReg, RegState::Implicit);
     }
+    return;
+  }
+
+  if (AArch64::PPR2RegClass.contains(DestReg) &&
+      AArch64::PPR2RegClass.contains(SrcReg)) {
+    assert(Subtarget.isSVEorStreamingSVEAvailable() &&
+           "Unexpected SVE predicate register.");
+    static const unsigned Indices[] = {AArch64::psub0, AArch64::psub1};
+    copyPhysRegTuple(MBB, I, DL, DestReg, SrcReg, KillSrc, AArch64::ORR_PPzPP,
+                     Indices);
     return;
   }
 
