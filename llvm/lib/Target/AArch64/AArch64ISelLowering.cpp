@@ -55,6 +55,7 @@
 #include "llvm/CodeGen/MachineRegisterInfo.h"
 #include "llvm/CodeGen/SDPatternMatch.h"
 #include "llvm/CodeGen/SelectionDAG.h"
+#include "llvm/CodeGen/SelectionDAGAddressAnalysis.h"
 #include "llvm/CodeGen/SelectionDAGNodes.h"
 #include "llvm/CodeGen/TargetCallingConv.h"
 #include "llvm/CodeGen/TargetInstrInfo.h"
@@ -27476,6 +27477,99 @@ static bool performTBISimplification(SDValue Addr,
   return false;
 }
 
+static bool combineConsecutiveLoads(LoadSDNode *LD, SelectionDAG &DAG,
+                                    TargetLowering::DAGCombinerInfo &DCI) {
+  if (!DCI.isBeforeLegalize())
+    return false;
+
+  const auto &Subtarget = DAG.getSubtarget<AArch64Subtarget>();
+  if (!Subtarget.enableSubRegLiveness() || !hasSVEMultiVectorOps(&Subtarget))
+    return false;
+
+  SDValue Chain = LD->getChain();
+  SDLoc DL(LD);
+
+  // Group load instructions according to base pointer.
+  SmallMapVector<SDValue, SmallVector<LoadSDNode *, 4>, 4> LoadGroups;
+  for (SDNode *User : Chain->users()) {
+    auto *LoadUser = dyn_cast<LoadSDNode>(User);
+    if (!LoadUser)
+      continue;
+    SDValue BasePtr = BaseIndexOffset::match(LoadUser, DAG).getBase();
+    if (BasePtr)
+      LoadGroups[BasePtr].push_back(LoadUser);
+  }
+
+  bool GroupRewritten = false;
+  for (const auto &LoadGroup : LoadGroups) {
+    auto LoadInsts = LoadGroup.second;
+    EVT MemVT = LoadInsts[0]->getMemoryVT();
+
+    // Skip group unless it contains at least two loads, all of the same type.
+    if (LoadInsts.size() < 2 || !llvm::all_of(LoadInsts, [&](LoadSDNode *Ld) {
+          return isSimpleScalableLoadOrStore(Ld, MemVT) &&
+                 !Ld->isNonTemporal() &&
+                 Ld->getExtensionType() == ISD::NON_EXTLOAD;
+        }))
+      continue;
+
+    SmallVector<LoadSDNode *, 4> OrderedLoads;
+    // Test each load instruction found in the chain to find the base for a
+    // group of consecutive, non-volatile loads.
+    for (LoadSDNode *Base : LoadInsts) {
+      auto Size = MemVT.getStoreSize();
+      for (unsigned Dist = 0; Dist < LoadInsts.size(); ++Dist) {
+        auto NextLd = find_if(LoadInsts, [&](LoadSDNode *Ld) {
+          return DAG.areNonVolatileConsecutiveLoads(Ld, Base, Size, Dist);
+        });
+
+        // Next consecutive load was not found, empty list.
+        if (NextLd == LoadInsts.end()) {
+          OrderedLoads.clear();
+          break;
+        }
+
+        OrderedLoads.push_back(*NextLd);
+      }
+
+      if (OrderedLoads.size() != LoadInsts.size())
+        continue;
+
+      // Rewrite consecutive loads into wide loads.
+      unsigned Remaining = OrderedLoads.size();
+      auto EC = MemVT.getVectorElementCount();
+      while (Remaining > 1) {
+        // Try to form groups of 4 while there are enough instructions left in
+        // the group, then form groups of 2.
+        unsigned NumVecs = Remaining > 3 ? 4 : 2;
+
+        auto *Base = OrderedLoads[OrderedLoads.size() - Remaining];
+        EVT WideVT =
+            MemVT.changeVectorElementCount(*DAG.getContext(), EC * NumVecs);
+        SDValue WideLd =
+            DAG.getLoad(WideVT, DL, Chain, Base->getBasePtr(),
+                        Base->getPointerInfo(), Base->getBaseAlign());
+
+        // Replace the original loads found with extracts from the new, wider
+        // load.
+        for (unsigned I = 0; I < NumVecs; ++I) {
+          auto Extract = DAG.getExtractSubvector(DL, MemVT, WideLd,
+                                                 EC.getKnownMinValue() * I);
+          unsigned LdIdx = (OrderedLoads.size() - Remaining) + I;
+          DCI.CombineTo(OrderedLoads[LdIdx], Extract, WideLd.getValue(1));
+        }
+
+        Remaining -= NumVecs;
+      }
+
+      GroupRewritten = true;
+      break;
+    }
+  }
+
+  return GroupRewritten;
+}
+
 static SDValue foldTruncStoreOfExt(SelectionDAG &DAG, SDNode *N) {
   assert((N->getOpcode() == ISD::STORE || N->getOpcode() == ISD::MSTORE) &&
          "Expected STORE dag node in input!");
@@ -27555,10 +27649,10 @@ static SDValue combineV3I8LoadExt(LoadSDNode *LD, SelectionDAG &DAG) {
 // Perform TBI simplification if supported by the target and try to break up
 // nontemporal loads larger than 256-bits loads for odd types so LDNPQ 256-bit
 // load instructions can be selected.
-static SDValue performLOADCombine(SDNode *N,
-                                  TargetLowering::DAGCombinerInfo &DCI,
-                                  SelectionDAG &DAG,
-                                  const AArch64Subtarget *Subtarget) {
+static SDValue
+performLOADCombine(SDNode *N, TargetLowering::DAGCombinerInfo &DCI,
+                   SelectionDAG &DAG, const AArch64Subtarget *Subtarget,
+                   SmallPtrSetImpl<SDNode *> &ChainsWithoutMergeableLoads) {
   if (Subtarget->supportsAddressTopByteIgnored())
     performTBISimplification(N->getOperand(1), DCI, DAG);
 
@@ -27589,6 +27683,13 @@ static SDValue performLOADCombine(SDNode *N,
   if (SDValue Res = combineV3I8LoadExt(LD, DAG))
     return Res;
 
+  SDValue Chain = LD->getChain();
+  if (!ChainsWithoutMergeableLoads.contains(Chain.getNode())) {
+    if (combineConsecutiveLoads(LD, DAG, DCI))
+      return SDValue(N, 0);
+    ChainsWithoutMergeableLoads.insert(Chain.getNode());
+  }
+
   if (!LD->isNonTemporal())
     return SDValue(N, 0);
 
@@ -27597,7 +27698,6 @@ static SDValue performLOADCombine(SDNode *N,
       256 % MemVT.getScalarSizeInBits() != 0)
     return SDValue(N, 0);
 
-  SDValue Chain = LD->getChain();
   SDValue BasePtr = LD->getBasePtr();
   SDNodeFlags Flags = LD->getFlags();
   SmallVector<SDValue, 4> LoadOps;
@@ -32392,7 +32492,8 @@ SDValue AArch64TargetLowering::PerformDAGCombine(SDNode *N,
   case ISD::SETCCCARRY:
     return performSETCCCARRYCombine(N, DAG);
   case ISD::LOAD:
-    return performLOADCombine(N, DCI, DAG, Subtarget);
+    return performLOADCombine(N, DCI, DAG, Subtarget,
+                              ChainsWithoutMergeableLoads);
   case ISD::STORE:
     return performSTORECombine(N, DCI, DAG, Subtarget);
   case ISD::MSTORE:

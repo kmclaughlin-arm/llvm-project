@@ -66,6 +66,8 @@ public:
   explicit AArch64TargetLowering(const TargetMachine &TM,
                                  const AArch64Subtarget &STI);
 
+  mutable SmallPtrSet<SDNode *, 4> ChainsWithoutMergeableLoads;
+
   const AArch64TargetMachine &getTM() const;
 
   /// Control the following reassociation of operands: (op (op x, c1), y) -> (op

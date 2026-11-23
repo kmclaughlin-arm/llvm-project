@@ -8292,6 +8292,9 @@ bool AArch64DAGToDAGISel::tryFoldCselToFMaxMin(SDNode *N) {
 }
 
 void AArch64DAGToDAGISel::PreprocessISelDAG() {
+  // Clear the list of chains that have been checked for consecutive loads.
+  Subtarget->getTargetLowering()->ChainsWithoutMergeableLoads.clear();
+
   bool MadeChange = false;
   for (SDNode &N : llvm::make_early_inc_range(CurDAG->allnodes())) {
     if (N.use_empty())
